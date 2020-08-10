@@ -1,0 +1,83 @@
+﻿@page "/"
+@using System.IO;
+@using Tewr.Blazor.FileReader;
+@inject IJSRuntime Runtime
+@inject IFileReaderService fileReaderService
+@inject NavigationManager NavManager
+
+<h1 class="text-center">Web Comic Reader</h1>
+<p class="text-right d-md-flex justify-content-md-end align-items-md-end">Prototype v0.1</p>
+
+@switch (Mode)
+{
+    default:
+        <p class="text-center">
+            <button class="btn btn-primary" type="button" onclick="OpenFile()">Select Book</button>
+        </p>
+        <input type="file" id="comic" name="comic" @ref="InputFile" @onchange="Open" hidden>
+        break;
+
+    case 1:
+        <div class="progress" style="height: 20px;">
+            <div class="progress-bar" style="width: @(Progress+"%");">@(Progress+"%")</div>
+        </div>
+        break;
+    case 2:
+        <p class="text-center">
+            <select required="required" class="form-control" @onchange="OnModeChanged">
+                <option value="" selected="selected">Select a Mode</option>
+                <option value="Manga">Manga</option>
+                <option value="Comic">Comic</option>
+                <option value="Other">Other</option>
+            </select>
+            <button type="button" class="btn btn-primary" @onclick="Read">Read</button>
+        </p>
+        break;
+}
+
+@code {
+    ElementReference InputFile;
+    int Mode = 0;
+    int Progress;
+    string Reader = null;
+    public async Task Open()
+    {
+        BookLoader.BlobHelper = new Blob(Runtime);
+        BookLoader.Runtime = Runtime;
+        foreach (var Reader in await fileReaderService.CreateReference(InputFile).EnumerateFilesAsync())
+        {
+            BookLoader.FileInfo = await Reader.ReadFileInfoAsync();
+
+            using Stream Comic = await Reader.OpenReadAsync();
+            using MemoryStream Buffer = new MemoryStream();
+            await Comic.CopyToAsync(Buffer);
+            Comic.Close();
+
+            Mode = 1;
+            StateHasChanged();
+
+            Buffer.Position = 0;
+            await BookLoader.Open(Buffer, OnProgressChanged);
+
+            Mode = 2;
+            StateHasChanged();
+        }
+    }
+
+    public void OnProgressChanged(int Progress)
+    {
+        this.Progress = Progress;
+        StateHasChanged();
+    }
+
+    public async Task Read()
+    {
+        await Runtime.InvokeVoidAsync("Fullscreen");
+        NavManager.NavigateTo(Reader);
+    }
+
+    public async Task OnModeChanged(ChangeEventArgs Args)
+    {
+        Reader = (string)Args.Value;
+    }
+}

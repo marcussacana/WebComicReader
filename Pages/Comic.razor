@@ -1,0 +1,48 @@
+﻿@page "/Comic"
+@inject NavigationManager NavManager
+@inject IJSRuntime Runtime
+
+<div class="flipbook-viewport">
+    <div class="container">
+        <div class="flipbook" dir="ltr">
+            @if (BookLoader.Pages?.Length > 0)
+            {
+                @for (int i = 0, x = 0; i < BookLoader.Pages.Length; i++)
+                {
+                    bool IsFirst = i == 0;
+                    bool IsLeft = ((i + x) & 1) != 0;
+                    if (BookLoader.IsPortrait[i])
+                    {
+                        <div class="page" style="background-image:url('@BookLoader.Pages[i]')"></div>
+                    }
+                    else
+                    {
+                        if (!IsLeft)
+                        {
+                            x++;
+                            <div class="page"></div>
+                        }
+                        x++;
+                        <div class="double" style="background-image:url('@BookLoader.Pages[i]')"></div>
+                    }
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await Runtime.InvokeVoidAsync("LoadComic");
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (BookLoader.Pages == null || BookLoader.Pages.Length == 0)
+            NavManager.NavigateTo("/");
+
+        await base.OnInitializedAsync();
+    }
+}
