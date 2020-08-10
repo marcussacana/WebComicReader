@@ -15,6 +15,7 @@
     });
     return $(window).width() / 2;
 }
+
 async function LoadManga() {
     await sleep(500);
     $('.flipbook .double').each(function (i) {
@@ -61,4 +62,9 @@ async function b64toBlob(base64, type = 'application/octet-stream') {
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function getBaseDirectory() {
+    var Elm = document.getElementsByTagName("base")[0];
+    return Elm.getAttribute("href");
 }
