@@ -5,6 +5,7 @@ using SharpCompress.Archives.SevenZip;
 using SharpCompress.Archives.Tar;
 using SharpCompress.Archives.Zip;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -16,16 +17,36 @@ namespace WebComicReader
     public static class BookLoader
     {
         public static Blob BlobHelper;
-        public static IJSRuntime Runtime;
         public static IFileInfo FileInfo;
         public static string[] Pages;
         public static bool[] IsPortrait;
 
-        public static async Task Open(Stream Comic, Action<int> OnProgress)
+        public static async Task OpenPages(string[] Names, Stream[] Streams, Action<int> OnProgress)
         {
-            int Count;
-            string[] Names;
-            Stream[] Streams;
+            int Count = Names.Length;
+            Array.Sort(Names, Streams);
+
+            List<string> PageList = new List<string>();
+            List<bool> PortraitList = new List<bool>();
+            for (int i = 0; i < Streams.Length; i++)
+            {
+                OnProgress?.Invoke(Percentage(i + Count, Count * 2));
+                await DoEvents();
+
+                var Rst = await OpenPage(Names[i], Streams[i]);
+                PageList.Add(Rst.Item1);
+                PortraitList.Add(Rst.Item2);
+            }
+
+            Pages = PageList.ToArray();
+            IsPortrait = PortraitList.ToArray();
+
+            OnProgress?.Invoke(100);
+            await DoEvents();
+        }
+
+        public static async Task OpenArchive(Stream Comic, Action<int> OnProgress)
+        {
             IArchive Archive;
 
             switch (FileInfo.Name.ToLowerInvariant().Split('.').Last().Trim())
@@ -51,34 +72,38 @@ namespace WebComicReader
             }
 
             var Result = await OpenArchive(Archive, OnProgress);
+            await OpenPages(Result.Item1, Result.Item2, OnProgress);
+        }
 
-            Count = Result.Item1;
-            Names = Result.Item2;
-            Streams = Result.Item3;
-
-            Array.Sort(Names, Streams);
-
-            Pages = new string[Streams.Length];
-            IsPortrait = new bool[Streams.Length];
-            for (int i = 0; i < Streams.Length; i++)
+        static async Task<(string, bool)> OpenPage(string Name, Stream Page)
+        {
+            try
             {
-                OnProgress?.Invoke(Percentage(i + Count, Count * 2));
-                await DoEvents();
-
+                if (!(Page is MemoryStream))
+                {
+                    var Stream = new MemoryStream();
+                    try {
+                        await Page.CopyToAsync(Stream);
+                    }
+                    catch {
+                        Page.CopyTo(Stream);
+                    }
+                    Page.Close();
+                    Page = Stream;
+                }
+                var Size = ImageHelper.GetImageSize(Page);
+                var Rst = (await ToBlob(Page), Size.Height > Size.Width);
+                Page.Close();
+                return Rst;
+            }
+            catch (Exception ex)
+            {
+                string Signature = string.Empty;
                 try
                 {
-                    var Size = GetImageSize(Streams[i]);
-                    Pages[i] = await ToBlob(Streams[i]);
-                    IsPortrait[i] = Size.Height > Size.Width;
-                    Streams[i].Close();
-                }
-                catch (Exception ex)
-                {
-                    Streams[i].Position = 0;
+                    Page.Position = 0;
                     byte[] Buff = new byte[8];
-                    Streams[i].Read(Buff, 0, Buff.Length);
-
-                    string Signature = string.Empty;
+                    Page.Read(Buff, 0, Buff.Length);
 
                     foreach (var Byte in Buff)
                         Signature += $"{Byte:X2} ";
@@ -88,17 +113,14 @@ namespace WebComicReader
                     foreach (var Byte in Buff)
                         if (Byte >= 0x20 && Byte <= 0x7E)
                             Signature += (char)Byte;
-
-                    throw new Exception($"Failed to Load the Image {Names} ({Signature})\n" + ex.ToString());
                 }
+                catch { }
+
+                throw new Exception($"Failed to Load the Image {Name} ({Signature})\n" + ex.ToString());
             }
-
-
-            OnProgress?.Invoke(100);
-            await DoEvents();
         }
 
-        public static async Task<(int, string[], Stream[])> OpenArchive(IArchive Archive, Action<int> OnProgress)
+        static async Task<(string[], Stream[])> OpenArchive(IArchive Archive, Action<int> OnProgress)
         {
             var Files = Archive.Entries.Where(entry => !entry.IsDirectory);
             int Count = Files.Count();
@@ -124,102 +146,28 @@ namespace WebComicReader
 
             Archive.Dispose();
 
-            return (Count, Names, Streams);
+            return (Names, Streams);
         }
         public static int Percentage(int Current, int Total) => (int)Math.Round((double)(100 * Current) / Total);
 
         public static async Task DoEvents() => await Task.Delay(10);
-        public static Size GetImageSize(Stream Buffer)
-        {
-            var OriPos = Buffer.Position;
-            var Ext = GetImageExtension(Buffer);
 
-            byte[] Data = new byte[8];
-            Buffer.Read(Data, 0, Data.Length);
-            Size ImgSize;
-            var Reader = new BinaryReader(Buffer);
-
-            switch (Ext)
-            {
-                case "bmp":
-                    Buffer.Position = 0x12;
-                    ImgSize = new Size(Reader.ReadInt32(), Reader.ReadInt32());
-                    break;
-                case "png":
-                    Buffer.Position = 0x10;
-                    ImgSize = new Size(Reader.ReadInt32().Reverse(), Reader.ReadInt32().Reverse());
-                    break;
-                case "gif":
-                    Buffer.Position = 0x06;
-                    ImgSize = new Size(Reader.ReadInt16(), Reader.ReadInt16());
-                    break;
-                case "jpg":
-                    Buffer.Position = FindJpgSizeOffset(Buffer);
-                    var Height = Reader.ReadUInt16().Reverse();
-                    var Width = Reader.ReadUInt16().Reverse();
-                    ImgSize = new Size(Width, Height);
-                    break;
-                default:
-                    throw new NotImplementedException($"Unk Extension: {Ext}");
-            }
-
-            Buffer.Position = OriPos;
-            return ImgSize;
-        }
-        public static int Reverse(this int Value)
-        {
-            var Data = BitConverter.GetBytes(Value);
-            Array.Reverse(Data);
-            return BitConverter.ToInt32(Data, 0);
-        }
-        public static ushort Reverse(this ushort Value)
-        {
-            var Data = BitConverter.GetBytes(Value);
-            Array.Reverse(Data);
-            return BitConverter.ToUInt16(Data, 0);
-        }
-        public static string GetImageExtension(Stream Buffer)
-        {
-            Buffer.Position = 0;
-            var Reader = new BinaryReader(Buffer);
-            var Header = Reader.ReadUInt32();
-
-            if (Header == 0x474E5089)
-                return "png";
-            if ((Header & 0x0000FFFF) == 0x4D42)
-                return "bmp";
-            if ((Header & 0x00FFFFFF) == 0x464947)
-                return "gif";
-
-            Buffer.Position = 0x06;
-            Header = Reader.ReadUInt32();
-            if (Header == 0x4649464A)
-                return "jpg";
-
-            throw new NotImplementedException($"Unsupported or Corrupted Image Format");
-        }
-
-        public static int FindJpgSizeOffset(Stream Buffer)
-        {
-            var Reader = new BinaryReader(Buffer);
-            Reader.BaseStream.Position = 2;
-            while (true)
-            {
-                var TagId = Reader.ReadUInt16().Reverse();
-                if ((TagId & 0xFFF0) != 0xFFC0)
-                {
-                    Reader.BaseStream.Position += Reader.ReadUInt16().Reverse();
-                    continue;
-                }
-
-                return (int)Reader.BaseStream.Position + 3;
-            }
-        }
         public static async Task<string> ToBlob(Stream Data)
         {
-            using MemoryStream Buffer = new MemoryStream();
-            Data.CopyTo(Buffer);
-            return await ToBlob(GetImageExtension(Data), Buffer.ToArray());
+            MemoryStream Buffer;
+            if (Data is MemoryStream)
+            {
+                Buffer = (MemoryStream)Data;
+            }
+            else
+            {
+                Buffer = new MemoryStream();
+                Data.CopyTo(Buffer);
+            }
+
+            var Blob = await ToBlob(ImageHelper.GetImageExtension(Data), Buffer.ToArray());
+            Buffer?.Dispose();
+            return Blob;
         }
 
         public static async Task<string> ToBlob(string Ext, byte[] Data)

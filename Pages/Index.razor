@@ -6,15 +6,15 @@
 @inject NavigationManager NavManager
 
 <h1 class="text-center">Web Comic Reader</h1>
-<p class="text-right d-md-flex justify-content-md-end align-items-md-end">Prototype v0.1</p>
+<p class="text-right d-md-flex justify-content-md-end align-items-md-end">Prototype v0.2</p>
+<input type="file" id="comic" name="comic" @ref="InputFile" @onchange="Open" multiple hidden>
 
 @switch (Mode)
 {
     default:
         <p class="text-center">
             <button class="btn btn-primary" type="button" onclick="OpenFile()">Select Book</button>
-        </p>
-        <input type="file" id="comic" name="comic" @ref="InputFile" @onchange="Open" hidden>
+        </p>        
         break;
 
     case 1:
@@ -43,9 +43,13 @@
     public async Task Open()
     {
         BookLoader.BlobHelper = new Blob(Runtime);
-        BookLoader.Runtime = Runtime;
-        foreach (var Reader in await fileReaderService.CreateReference(InputFile).EnumerateFilesAsync())
+        Program.Runtime = Runtime;
+
+        var SelectedFiles = await fileReaderService.CreateReference(InputFile).EnumerateFilesAsync();
+
+        if (SelectedFiles.Count() == 1)
         {
+            var Reader = SelectedFiles.First();
             BookLoader.FileInfo = await Reader.ReadFileInfoAsync();
 
             using Stream Comic = await Reader.OpenReadAsync();
@@ -57,11 +61,29 @@
             StateHasChanged();
 
             Buffer.Position = 0;
-            await BookLoader.Open(Buffer, OnProgressChanged);
-
-            Mode = 2;
-            StateHasChanged();
+            await BookLoader.OpenArchive(Buffer, OnProgressChanged);
         }
+        else
+        {
+
+            Mode = 1;
+            StateHasChanged();
+
+            string[] Names = new string[SelectedFiles.Count()];
+            Stream[] Pages = new Stream[SelectedFiles.Count()];
+            for (int i = 0; i < Pages.Length; i++)
+            {
+                OnProgressChanged(BookLoader.Percentage(i, Pages.Length * 2));
+                var Reader = SelectedFiles.ElementAt(i);
+                Names[i] = (await Reader.ReadFileInfoAsync()).Name;
+                Pages[i] = await Reader.OpenReadAsync();
+            }
+
+            await BookLoader.OpenPages(Names, Pages, OnProgressChanged);
+        }
+
+        Mode = 2;
+        StateHasChanged();
     }
 
     public void OnProgressChanged(int Progress)

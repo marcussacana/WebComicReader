@@ -34,14 +34,16 @@
 @code {
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await Runtime.InvokeVoidAsync("LoadComic");
+        if (!(BookLoader.Pages == null || BookLoader.Pages.Length == 0))
+            await Runtime.InvokeVoidAsync("LoadComic");
         await base.OnAfterRenderAsync(firstRender);
     }
 
     protected override async Task OnInitializedAsync()
     {
+        Program.Runtime = Runtime;
         if (BookLoader.Pages == null || BookLoader.Pages.Length == 0)
-            NavManager.NavigateTo("/");
+            await NavManager.NavigateToHome();
 
         await base.OnInitializedAsync();
     }
