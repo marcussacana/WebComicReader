@@ -13,7 +13,7 @@ namespace WebComicReader
     public static class Program
     {
         public static IJSRuntime Runtime;
-        public static ILogger Logger;
+        public static ILogger<Pages.Index> Logger;
 
         public static async Task Main(string[] args)
         {
