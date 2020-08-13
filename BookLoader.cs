@@ -1,4 +1,5 @@
-﻿using Microsoft.JSInterop;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
 using SharpCompress.Archives;
 using SharpCompress.Archives.Rar;
 using SharpCompress.Archives.SevenZip;
@@ -34,8 +35,12 @@ namespace WebComicReader
                 await DoEvents();
 
                 var Rst = await OpenPage(Names[i], Streams[i]);
-                PageList.Add(Rst.Item1);
-                PortraitList.Add(Rst.Item2);
+
+                if (Rst.Blob != null)
+                {
+                    PageList.Add(Rst.Blob);
+                    PortraitList.Add(Rst.Portrait);
+                }
             }
 
             Pages = PageList.ToArray();
@@ -72,20 +77,22 @@ namespace WebComicReader
             }
 
             var Result = await OpenArchive(Archive, OnProgress);
-            await OpenPages(Result.Item1, Result.Item2, OnProgress);
+            await OpenPages(Result.Names, Result.Streams, OnProgress);
         }
 
-        static async Task<(string, bool)> OpenPage(string Name, Stream Page)
+        static async Task<(string Blob, bool Portrait)> OpenPage(string Name, Stream Page)
         {
             try
             {
                 if (!(Page is MemoryStream))
                 {
                     var Stream = new MemoryStream();
-                    try {
+                    try
+                    {
                         await Page.CopyToAsync(Stream);
                     }
-                    catch {
+                    catch
+                    {
                         Page.CopyTo(Stream);
                     }
                     Page.Close();
@@ -116,11 +123,12 @@ namespace WebComicReader
                 }
                 catch { }
 
-                throw new Exception($"Failed to Load the Image {Name} ({Signature})\n" + ex.ToString());
+                Program.Logger.LogWarning($"Failed to Load the Image {Name} ({Signature})\n" + ex.ToString());
+                return (null, false);
             }
         }
 
-        static async Task<(string[], Stream[])> OpenArchive(IArchive Archive, Action<int> OnProgress)
+        static async Task<(string[] Names, Stream[] Streams)> OpenArchive(IArchive Archive, Action<int> OnProgress)
         {
             var Files = Archive.Entries.Where(entry => !entry.IsDirectory);
             int Count = Files.Count();

@@ -70,7 +70,7 @@ namespace WebComicReader
 
             Buffer.Position = 0x06;
             Header = Reader.ReadUInt32();
-            if (Header == 0x4649464A)
+            if (Header == 0x4649464A || Header == 0x66697845)
                 return "jpg";
 
             throw new NotImplementedException($"Unsupported or Corrupted Image Format");
