@@ -123,7 +123,7 @@ namespace WebComicReader
                 }
                 catch { }
 
-                Program.Logger.LogWarning($"Failed to Load the Image {Name} ({Signature})\n" + ex.ToString());
+                await Program.Warning($"Failed to Load the Image {Name} ({Signature})\n" + ex.ToString());
                 return (null, false);
             }
         }

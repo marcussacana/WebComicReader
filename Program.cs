@@ -13,7 +13,6 @@ namespace WebComicReader
     public static class Program
     {
         public static IJSRuntime Runtime;
-        public static ILogger<Pages.Index> Logger;
 
         public static async Task Main(string[] args)
         {
@@ -33,6 +32,18 @@ namespace WebComicReader
         public static async Task NavigateToHome(this NavigationManager Nav)
         {
             Nav.NavigateTo(await GetBaseDirectory());
+        }
+        public static async Task Info(string Message, params object[] Format)
+        {
+            await Runtime.InvokeVoidAsync("console.info", string.Format(Message, Format));
+        }
+        public static async Task Warning(string Message, params object[] Format)
+        {
+            await Runtime.InvokeVoidAsync("console.warn", string.Format(Message, Format));
+        }
+        public static async Task Error(string Message, params object[] Format)
+        {
+            await Runtime.InvokeVoidAsync("console.error", string.Format(Message, Format));
         }
     }
 }

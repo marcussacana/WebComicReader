@@ -4,7 +4,6 @@
 @inject IJSRuntime Runtime
 @inject IFileReaderService fileReaderService
 @inject NavigationManager NavManager
-@inject Microsoft.Extensions.Logging.ILogger<Index> Logger
 
 <h1 class="text-center">Web Comic Reader</h1>
 <p class="text-right d-md-flex justify-content-md-end align-items-md-end">Prototype v0.2</p>
@@ -45,7 +44,6 @@
     {
         BookLoader.BlobHelper = new Blob(Runtime);
         Program.Runtime = Runtime;
-        Program.Logger = Logger;
 
         var SelectedFiles = await fileReaderService.CreateReference(InputFile).EnumerateFilesAsync();
 
