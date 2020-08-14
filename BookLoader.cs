@@ -1,24 +1,20 @@
-﻿using Microsoft.Extensions.Logging;
-using Microsoft.JSInterop;
-using SharpCompress.Archives;
-using SharpCompress.Archives.Rar;
-using SharpCompress.Archives.SevenZip;
-using SharpCompress.Archives.Tar;
-using SharpCompress.Archives.Zip;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Tewr.Blazor.FileReader;
+using WebComicReader.Archives;
 
 namespace WebComicReader
 {
     public static class BookLoader
     {
+        static IArchive[] Formats = new IArchive[] {
+            new CBZ(), new CB7(), new CBR(), new CBT()
+        };
+
         public static Blob BlobHelper;
-        public static IFileInfo FileInfo;
         public static string[] Pages;
         public static bool[] IsPortrait;
 
@@ -31,8 +27,8 @@ namespace WebComicReader
             List<bool> PortraitList = new List<bool>();
             for (int i = 0; i < Streams.Length; i++)
             {
-                OnProgress?.Invoke(Percentage(i + Count, Count * 2));
-                await DoEvents();
+                OnProgress?.Invoke(Program.Percentage(i + Count, Count * 2));
+                await Program.DoEvents();
 
                 var Rst = await OpenPage(Names[i], Streams[i]);
 
@@ -47,37 +43,36 @@ namespace WebComicReader
             IsPortrait = PortraitList.ToArray();
 
             OnProgress?.Invoke(100);
-            await DoEvents();
+            await Program.DoEvents();
         }
 
-        public static async Task OpenArchive(Stream Comic, Action<int> OnProgress)
+        public static async Task OpenArchive(string Name, Stream Archive, Action<int> OnProgress)
         {
-            IArchive Archive;
 
-            switch (FileInfo.Name.ToLowerInvariant().Split('.').Last().Trim())
+            var Ext = Name.ToLowerInvariant().Split('.').Last().Trim();
+            var PresumedFormats = (from x in Formats where x.Extensions.Contains(Ext) select x);
+            var UnexpectedFormats = (from x in Formats where !x.Extensions.Contains(Ext) select x);
+
+            (string[] Names, Stream[] Streams)? Result = null;
+
+            foreach (var Format in PresumedFormats.Concat(UnexpectedFormats))
             {
-                case "zip":
-                case "cbz":
-                    Archive = ZipArchive.Open(Comic);
+                try
+                {
+                    Result = await Format.Open(Archive, OnProgress);
                     break;
-                case "rar":
-                case "cbr":
-                    Archive = RarArchive.Open(Comic);
-                    break;
-                case "7z":
-                case "cb7":
-                    Archive = SevenZipArchive.Open(Comic);
-                    break;
-                case "tar":
-                case "cbt":
-                    Archive = TarArchive.Open(Comic);
-                    break;
-                default:
-                    throw new Exception("Unsupported Comic Format");
+                }
+                catch { }
             }
 
-            var Result = await OpenArchive(Archive, OnProgress);
-            await OpenPages(Result.Names, Result.Streams, OnProgress);
+            if (Result == null) { 
+                var Signature = GetSignature(Archive);
+                Archive?.Close();
+                throw new Exception($"Failed to open the Archive \"{Name}\" ({Signature})");
+            };
+
+            await OpenPages(Result?.Names, Result?.Streams, OnProgress);
+            Archive?.Close();
         }
 
         static async Task<(string Blob, bool Portrait)> OpenPage(string Name, Stream Page)
@@ -86,17 +81,9 @@ namespace WebComicReader
             {
                 if (!(Page is MemoryStream))
                 {
-                    var Stream = new MemoryStream();
-                    try
-                    {
-                        await Page.CopyToAsync(Stream);
-                    }
-                    catch
-                    {
-                        Page.CopyTo(Stream);
-                    }
+                    var MemStream = await Page.ToMemoryStream();
                     Page.Close();
-                    Page = Stream;
+                    Page = MemStream;
                 }
                 var Size = ImageHelper.GetImageSize(Page);
                 var Rst = (await ToBlob(Page), Size.Height > Size.Width);
@@ -105,73 +92,16 @@ namespace WebComicReader
             }
             catch (Exception ex)
             {
-                string Signature = string.Empty;
-                try
-                {
-                    Page.Position = 0;
-                    byte[] Buff = new byte[8];
-                    Page.Read(Buff, 0, Buff.Length);
-
-                    foreach (var Byte in Buff)
-                        Signature += $"{Byte:X2} ";
-
-                    Signature += " ";
-
-                    foreach (var Byte in Buff)
-                        if (Byte >= 0x20 && Byte <= 0x7E)
-                            Signature += (char)Byte;
-                }
-                catch { }
+                var Signature = GetSignature(Page);
 
                 await Program.Warning($"Failed to Load the Image {Name} ({Signature})\n" + ex.ToString());
                 return (null, false);
             }
         }
 
-        static async Task<(string[] Names, Stream[] Streams)> OpenArchive(IArchive Archive, Action<int> OnProgress)
-        {
-            var Files = Archive.Entries.Where(entry => !entry.IsDirectory);
-            int Count = Files.Count();
-
-            string[] Names = new string[Count];
-            Stream[] Streams = new Stream[Count];
-
-            int Current = 0;
-
-            foreach (var Entry in Files)
-            {
-                OnProgress?.Invoke(Percentage(Current, Count * 2));
-                await DoEvents();
-
-                using Stream Input = Entry.OpenEntryStream();
-                var Buffer = new MemoryStream();
-                Input.CopyTo(Buffer);
-                Buffer.Position = 0;
-
-                Names[Current] = Entry.Key;
-                Streams[Current++] = Buffer;
-            }
-
-            Archive.Dispose();
-
-            return (Names, Streams);
-        }
-        public static int Percentage(int Current, int Total) => (int)Math.Round((double)(100 * Current) / Total);
-
-        public static async Task DoEvents() => await Task.Delay(10);
-
         public static async Task<string> ToBlob(Stream Data)
         {
-            MemoryStream Buffer;
-            if (Data is MemoryStream)
-            {
-                Buffer = (MemoryStream)Data;
-            }
-            else
-            {
-                Buffer = new MemoryStream();
-                Data.CopyTo(Buffer);
-            }
+            var Buffer = await Data.ToMemoryStream();
 
             var Blob = await ToBlob(ImageHelper.GetImageExtension(Data), Buffer.ToArray());
             Buffer?.Dispose();
@@ -191,6 +121,28 @@ namespace WebComicReader
             };
 
             return await BlobHelper.ToBlobUrl(Data, Mime);
+        }
+
+        public static string GetSignature(Stream Input)
+        {
+            string Signature = string.Empty;
+            try
+            {
+                Input.Position = 0;
+                byte[] Buff = new byte[8];
+                Input.Read(Buff, 0, Buff.Length);
+
+                foreach (var Byte in Buff)
+                    Signature += $"{Byte:X2} ";
+
+                Signature += " ";
+
+                foreach (var Byte in Buff)
+                    if (Byte >= 0x20 && Byte <= 0x7E)
+                        Signature += (char)Byte;
+            }
+            catch { }
+            return Signature;
         }
     }
 }

@@ -1,0 +1,239 @@
+﻿@page "/Embedded"
+@using System.Web;
+@using System.IO;
+@inject NavigationManager NavManager
+@inject IJSRuntime Runtime
+
+
+<img src="icon-512.png" style="position: relative; left: calc(50% - 256px);">
+
+@switch (Message)
+{
+    case 0:
+        <div class="progress" style="height: 20px;">
+            <div class="progress-bar" style="width: @(Progress+"%");">@(Progress+"%")</div>
+        </div>
+        break;
+    case 1:
+        <div class="progress" style="height: 20px;">
+            <div class="progress-bar" style="width: @(Progress+"%");">@(Progress+"%") (1/2)</div>
+        </div>
+        break;
+    case 2:
+        <div class="progress" style="height: 20px;">
+            <div class="progress-bar" style="width: @(Progress+"%");">@(Progress+"%") (2/2)</div>
+        </div>
+        break;
+    default:
+        <p>If you're reading this, then something is wrong.</p>
+        break;
+}
+@code {
+
+    int Message = -1;
+    int Progress = 0;
+
+    //Embedded Usage
+    //http://localhost/Embedded/#ParamterA=ValueA&ParamterB=ValueB
+
+    //Paramters:
+
+        //Input: (Required)
+        //Choose a Input File Mode
+        //Valid Values: NativeImages, NativeBook, RemoteImages, RemoteBook
+
+        //Base: (Optional, Pages Required)
+        //Set a Prefix to all Images Url/Path
+
+        //Pages:
+        //A List, separated by | of all page urls/paths
+
+        //Archive:
+        //The Url/Path of the book to be readed
+
+        //Mode: (Required)
+        //The Reader Mode to be used
+        //Valid Values: Comic, Manga, Other
+
+    //Input Modes Usage
+
+        //NativeImages:
+        //When using a Embedded browser you can handle requests to https://res/
+        //The domain needs to work like the file:// but without security limitations
+        //Then you must send a list of all pages path to be loaded
+        //Example A: http://localhost/Embedded/#Input=NativeImages&Base=C:/SampleDir/&Pages=000.png|001.png|002.png
+        //Example B: http://localhost/Embedded/#Input=NativeImages&Base=C%3A%5CSampleDir%5C&Pages=000.png|001.png|002.png
+        //Example C: http://localhost/Embedded/#Input=NativeImages&Pages=C:\SampleDir\000.png|C:\SampleDir\001.png|C:\SampleDir\002.png
+        //Example D: http://localhost/Embedded/#Input=NativeImages&Pages=C%3A%5CSampleDir%5C000.png%7CC%3A%5CSampleDir%5C001.png%7CC%3A%5CSampleDir%5C002.png
+
+        //NativeBook:
+        //When using a Embedded browser you can handle requests to https://res/ (Because the fetch API only allow http/https requets)
+        //The domain needs to work like the file:// but without security limitations
+        //Then you must send the book file path to be loaded
+        //Example A: http://localhost/Embedded/#Input=NativeBook&Archive=C:/SampleDir/MyComic.cbz
+        //Example B: http://localhost/Embedded/#Input=NativeBook&Archive=C%3A%5CSampleDir%5CMyComic.cbz
+
+        //RemoteImages:
+        //Direct Download images to be loaded
+        //Example A: http://localhost/Embedded/#Input=RemoteImages&Base=http://localhost/&Pages=000.png|001.png|002.png
+        //Example B: http://localhost/Embedded/#Input=RemoteImages&Base=http%3A%2F%2Flocalhost%2F&Pages=000.png|001.png|002.png
+        //Example C: http://localhost/Embedded/#Input=RemoteImages&Pages=http://localhost/000.png|http://localhost/001.png|http://localhost/002.png
+        //Example D: http://localhost/Embedded/#Input=RemoteImages&Pages=http%3A%2F%2Flocalhost%2F000.png%7Chttp%3A%2F%2Flocalhost%2F001.png%7Chttp%3A%2F%2Flocalhost%2F002.png
+
+        //RemoteBook:
+        //Direct Download a book to be loaded
+        //Example A: http://localhost/Embedded/#Input=RemoteBook&Archive=http://localhost/MyComic.cbz
+        //Example B: http://localhost/Embedded/#Input=RemoteBook&Archive=http%3A%2F%2Flocalhost%2FMyComic.cbz
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        BookLoader.BlobHelper = new Blob(Runtime);
+        Program.Runtime = Runtime;
+        var Info = await Program.GetHash();
+
+        var QueryInfo = HttpUtility.ParseQueryString(Info);
+        var Keys = QueryInfo.AllKeys.Select(x => x.ToLower());
+        if (!Keys.Contains("input"))
+            return;
+
+        var Input = QueryInfo["input"];
+        var Mode = QueryInfo["mode"];
+
+        string Base = null;
+        if (Keys.Contains("base"))
+        {
+            Base = HttpUtility.UrlDecode(QueryInfo["base"]);
+            if (!Base.EndsWith("\\") && !Base.EndsWith("/"))
+                Base += "/";
+        }
+
+        Message = 0;
+        StateHasChanged();
+
+        switch (Input.ToLowerInvariant().Trim())
+        {
+            case "nativeimages":
+                var nPages = QueryInfo["pages"].Split('|');
+
+                if (Base == null)
+                    await NativeImagesMode(nPages);
+                else
+                    await NativeImagesMode((from x in nPages select Base + x).ToArray());
+                break;
+            case "nativebook":
+                var nArchive = QueryInfo["archive"];
+                await NativeBookMode(nArchive);
+                break;
+            case "remoteimages":
+                var rPages = QueryInfo["pages"].Split('|');
+
+                if (Base == null)
+                    await RemoteImagesMode(rPages);
+                else
+                    await RemoteImagesMode((from x in rPages select Base + x).ToArray());
+                break;
+            case "remotebook":
+                var rArchive = QueryInfo["archive"];
+                await RemoteBookMode(rArchive);
+                break;
+        }
+
+        switch (Mode.ToLowerInvariant().Trim())
+        {
+            case "comic":
+                NavManager.NavigateTo("Comic");
+                break;
+            case "manga":
+                NavManager.NavigateTo("Manga");
+                break;
+            case "other":
+                NavManager.NavigateTo("Other");
+                break;
+        }
+
+        await base.OnInitializedAsync();
+    }
+
+    public async Task NativeImagesMode(string[] Files)
+    {
+        var Client = new HttpClient();
+
+        (string[] Names, Stream[] Streams) Pages = default;
+
+        Pages.Names = new string[Files.Length];
+        Pages.Streams = new Stream[Files.Length];
+
+        for (int i = 0; i < Files.Length; i++)
+        {
+            OnProgressChanged(Program.Percentage(i, Files.Length * 2));
+            var Name = Path.GetFileName(Files[i]);
+            var Reader = await Client.GetStreamAsync($"https://res/{Files[i].Replace("\\", "/")}");
+
+            Pages.Names[i] = Name;
+            Pages.Streams[i] = await Reader.ToMemoryStream();
+        }
+
+        await BookLoader.OpenPages(Pages.Names, Pages.Streams, OnProgressChanged);
+    }
+
+    public async Task NativeBookMode(string Book)
+    {
+        var Client = new HttpClient();
+        var Name = Path.GetFileName(Book);
+
+        using var Stream = await Client.GetStreamAsync($"https://res/{Book.Replace("\\", "/")}");
+        await BookLoader.OpenArchive(Name, await Stream.ToMemoryStream(), OnProgressChanged);
+    }
+
+    public async Task RemoteImagesMode(string[] Files)
+    {
+        var Client = new HttpClient();
+
+        (string[] Names, Stream[] Streams) Pages = default;
+
+        Pages.Names = new string[Files.Length];
+        Pages.Streams = new Stream[Files.Length];
+
+        for (int i = 0; i < Files.Length; i++)
+        {
+            OnProgressChanged(Program.Percentage(i, Files.Length * 2));
+            var Name = Path.GetFileName(Files[i]);
+            var Reader = await Client.GetWithProgressAsync(Files[i], (Downloaded, Total) =>
+            {
+                int FileProgress = Program.Percentage(Downloaded, Total) + (i * 100);
+                OnProgressChanged(Program.Percentage(FileProgress, Files.Length * 100) / 2);
+            });
+
+            Pages.Names[i] = Name;
+            Pages.Streams[i] = Reader;
+        }
+
+        await BookLoader.OpenPages(Pages.Names, Pages.Streams, OnProgressChanged);
+    }
+
+    public async Task RemoteBookMode(string File)
+    {
+        Message = 1;
+        StateHasChanged();
+
+        var Client = new HttpClient();
+        var Name = Path.GetFileName(File);
+        using var Archive = await Client.GetWithProgressAsync(File, (Downloaded, Total) => OnProgressChanged(Program.Percentage(Downloaded, Total)));
+
+        Progress = 0;
+        Message = 2;
+        StateHasChanged();
+
+        await BookLoader.OpenArchive(Name, Archive, OnProgressChanged);
+    }
+
+    public void OnProgressChanged(int Progress)
+    {
+        if (this.Progress == Progress)
+            return;
+
+        this.Progress = Progress;
+        StateHasChanged();
+    }
+}

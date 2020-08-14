@@ -5,8 +5,8 @@
 @inject IFileReaderService fileReaderService
 @inject NavigationManager NavManager
 
-<h1 class="text-center">Web Comic Reader</h1>
-<p class="text-right d-md-flex justify-content-md-end align-items-md-end">Prototype v0.3.1</p>
+<img src="icon-512.png" style="position: relative; left: calc(50% - 256px);">
+<p class="text-right d-md-flex justify-content-md-end align-items-md-end">Prototype v0.4</p>
 <input type="file" id="comic" name="comic" @ref="InputFile" @onchange="Open" multiple hidden>
 
 @switch (Mode)
@@ -16,7 +16,6 @@
             <button class="btn btn-primary" type="button" onclick="OpenFile()">Select Book</button>
         </p>
         break;
-
     case 1:
         <div class="progress" style="height: 20px;">
             <div class="progress-bar" style="width: @(Progress+"%");">@(Progress+"%")</div>
@@ -50,7 +49,7 @@
         if (SelectedFiles.Count() == 1)
         {
             var Reader = SelectedFiles.First();
-            BookLoader.FileInfo = await Reader.ReadFileInfoAsync();
+            var FileInfo = await Reader.ReadFileInfoAsync();
 
             using Stream Comic = await Reader.OpenReadAsync();
             using MemoryStream Buffer = new MemoryStream();
@@ -61,7 +60,7 @@
             StateHasChanged();
 
             Buffer.Position = 0;
-            await BookLoader.OpenArchive(Buffer, OnProgressChanged);
+            await BookLoader.OpenArchive(FileInfo.Name, Buffer, OnProgressChanged);
         }
         else
         {
@@ -73,7 +72,7 @@
             Stream[] Pages = new Stream[SelectedFiles.Count()];
             for (int i = 0; i < Pages.Length; i++)
             {
-                OnProgressChanged(BookLoader.Percentage(i, Pages.Length * 2));
+                OnProgressChanged(Program.Percentage(i, Pages.Length * 2));
                 var Reader = SelectedFiles.ElementAt(i);
                 Names[i] = (await Reader.ReadFileInfoAsync()).Name;
                 Pages[i] = await Reader.OpenReadAsync();
