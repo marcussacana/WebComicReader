@@ -1,10 +1,7 @@
 ﻿async function LoadComic() {
     await sleep(500);
-    $('.flipbook .double').each(function (i) {
-        this.style.width = `${$(window).width()}px`;
-        this.style.height = `${$(window).height()}px`;
-        $(this).scissor();
-    });
+
+    ResizeDoubles();
 
     $('.flipbook').turn({
         width: $(window).width(),
@@ -21,11 +18,8 @@
 
 async function LoadManga() {
     await sleep(500);
-    $('.flipbook .double').each(function (i) {
-        this.style.width = `${$(window).width()}px`;
-        this.style.height = `${$(window).height()}px`;
-        $(this).scissorReverse();
-    });
+
+    ResizeDoubles(undefined, true);
 
     $('.flipbook').turn({
         width: $(window).width(),
@@ -38,6 +32,38 @@ async function LoadManga() {
     PostLoad(true);
 
     return $(window).width() / 2;
+}
+
+function ResizeDoubles(InZoom, Reverse) {
+    let SecondaryClass = Reverse ? "even" : "odd";
+    let width = $(window).width();
+    let height = $(window).height();
+    let pageWidth = $(window).width() / 2;
+    let zoomWidth = largeWidth();
+    let zoomHeight = largeHeight();
+    let zoomPageWidth = largeWidth() / 2;
+
+    $('.flipbook .double').each(function (i) {
+        if (InZoom) {
+            //Zoom Enter
+            this.style.width = this.parentElement.style.width = `${zoomWidth}px`;
+            this.style.height = this.parentElement.style.height = `${zoomHeight}px`;
+            if ($(this.parentElement).hasClass(SecondaryClass))
+                this.style.marginLeft = `${zoomPageWidth * -1}px`;
+
+        } else if (typeof (InZoom) == 'undefined') {
+            //Book Initialize
+            this.style.width = `${width}px`;
+            this.style.height = `${height}px`;
+            Reverse ? $(this).scissorReverse() : $(this).scissor();
+        } else {
+            //Zoom Exit
+            this.style.width = this.parentElement.style.width = `${width}px`;
+            this.style.height = this.parentElement.style.height = `${height}px`;
+            if ($(this.parentElement).hasClass(SecondaryClass))
+                this.style.marginLeft = `${pageWidth * -1}px`;
+        }
+    });
 }
 
 function PostLoad(swap) {
@@ -61,6 +87,10 @@ function PostLoad(swap) {
 
                 $(this).zoom('flipbook').turn('previous');
 
+            },
+
+            resize: function (event, scale, page, pageElement) {
+                ResizeDoubles(scale != 1, swap);
             },
 
             zoomIn: function () {
@@ -174,6 +204,11 @@ function resizeViewport() {
 function largeWidth() {
     var width = $(window).width();
     return width + (width * 0.50);//50% of zoom
+}
+
+function largeHeight() {
+    var height = $(window).height();
+    return height + (height * 0.50);//50% of zoom
 }
 
 async function OpenFile() {
