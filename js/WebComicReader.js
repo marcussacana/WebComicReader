@@ -71,9 +71,7 @@ function PostLoad(swap) {
         flipbook: $('.flipbook'),
 
         max: function () {
-
             return largeWidth() / $('.flipbook').width();
-
         },
 
         when: {
@@ -236,6 +234,15 @@ async function b64toBlob(base64, type = 'application/octet-stream') {
     return Res.blob();
 }
 
+async function getContentLength(URL) {
+    var Resp = await fetch(URL, {
+        "body": null,
+        "method": "HEAD",
+        "mode": "no-cors"
+    });
+    return Resp.headers.get("Content-Length");
+}
+
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -243,4 +250,8 @@ function sleep(ms) {
 function getBaseDirectory() {
     var Elm = document.getElementsByTagName("base")[0];
     return Elm.getAttribute("href");
+}
+
+function getHash() {
+    return location.hash.substr(1);
 }
