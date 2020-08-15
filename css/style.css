@@ -68,3 +68,11 @@
     height: 100%;
     opacity: 0.2;
 }
+
+.embedded {
+    position: relative;
+    right: 0px;
+    top: calc(100% - 35px);
+    left: 0px;
+    z-index: 1030;
+}
