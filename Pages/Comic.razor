@@ -14,17 +14,17 @@
                     bool IsLeft = ((i + x) & 1) != 0;
                     if (BookLoader.IsPortrait[i])
                     {
-                        <Page IsDouble="false" URL="@BookLoader.Pages[i]"></Page>
+                        <Page IsDouble="false" URL="@BookLoader.Pages[i]" IsLast="@(IsLeft && IsLast)"></Page>
                     }
                     else
                     {
                         if (!IsLeft)
                         {
                             x++;
-                            <DummyPage IsLast="false" Grayscale="false" />
+                            <DummyPage IsLast="false" Grayscale="true" />
                         }
                         x++;
-                        <Page IsDouble="true" URL="@BookLoader.Pages[i]"></Page>
+                        <Page IsDouble="true" URL="@BookLoader.Pages[i]" IsLast="@(IsLeft && IsLast)"></Page>
                     }
 
                     @if (!IsLeft && IsLast)
