@@ -6,6 +6,7 @@
 
 
 <img src="icon-512.png" style="position: relative; left: calc(50% - 256px);">
+<p class="text-right d-md-flex justify-content-md-end align-items-md-end">Prototype v0.5</p>
 
 @switch (Message)
 {
@@ -55,6 +56,12 @@
         //The Reader Mode to be used
         //Valid Values: Comic, Manga, Other
 
+        //Embedded:
+        //Enable/Disable the Close/Next buttons
+        //You must create a jsobject called embedded
+        //with the functions close and next.
+        //Valid Values: true, false
+
     //Input Modes Usage
 
         //NativeImages:
@@ -93,7 +100,7 @@
         var Info = await Program.GetHash();
 
         var QueryInfo = HttpUtility.ParseQueryString(Info);
-        var Keys = QueryInfo.AllKeys.Select(x => x.ToLower());
+        var Keys = QueryInfo.AllKeys.Select(x => x.ToLowerInvariant());
         if (!Keys.Contains("input"))
             return;
 
@@ -137,6 +144,11 @@
                 var rArchive = QueryInfo["archive"];
                 await RemoteBookMode(rArchive);
                 break;
+        }
+
+        if (Keys.Contains("embedded"))
+        {
+            BookLoader.EmbeddedFunctions = QueryInfo["embedded"].Trim().ToLowerInvariant() == "true";
         }
 
         switch (Mode.ToLowerInvariant().Trim())

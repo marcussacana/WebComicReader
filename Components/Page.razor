@@ -1,0 +1,18 @@
+﻿<div class="@(IsDouble?"double":"page")" style="background-image:url('@URL')">
+    @if (IsLast)
+    {
+        <EmbeddedControl />
+    }
+</div>
+
+@code {
+
+    [Parameter]
+    public bool IsLast { get; set; }
+
+    [Parameter]
+    public bool IsDouble { get; set; } = false;
+
+    [Parameter]
+    public string URL { get; set; }
+}

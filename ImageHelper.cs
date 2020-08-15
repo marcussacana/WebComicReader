@@ -65,6 +65,8 @@ namespace WebComicReader
                 return "png";
             if ((Header & 0x0000FFFF) == 0x4D42)
                 return "bmp";
+            if ((Header & 0x0000F0FF) == 0xD0FF)
+                return "jpg";
             if ((Header & 0x00FFFFFF) == 0x464947)
                 return "gif";
 

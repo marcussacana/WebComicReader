@@ -17,7 +17,7 @@ namespace WebComicReader
         public static Blob BlobHelper;
         public static string[] Pages;
         public static bool[] IsPortrait;
-
+        public static bool EmbeddedFunctions;
         public static async Task OpenPages(string[] Names, Stream[] Streams, Action<int> OnProgress)
         {
             int Count = Names.Length;
