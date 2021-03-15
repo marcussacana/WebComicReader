@@ -1,7 +1,21 @@
 ﻿@if (BookLoader.EmbeddedFunctions)
 {
-    <div class="embedded">
+    if (BasicMode)
+    {
         <a href="#" class="btn" onclick="embedded.close(); return false;">Close</a>
         <a href="#" class="btn" onclick="embedded.next(); return false;">Next</a>
-    </div>
+    }
+    else
+    {
+        <div class="embedded">
+            <a href="#" class="btn" onclick="embedded.close(); return false;">Close</a>
+            <a href="#" class="btn" onclick="embedded.next(); return false;">Next</a>
+        </div>
+    }
+}
+
+@code {
+
+    [Parameter]
+    public bool BasicMode { get; set; }
 }
