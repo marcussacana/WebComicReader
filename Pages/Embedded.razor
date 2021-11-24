@@ -6,23 +6,29 @@
 
 
 <img src="icon-512.png" style="position: relative; left: calc(50% - 256px);">
-<p class="text-right d-md-flex justify-content-md-end align-items-md-end">Prototype v0.5.1</p>
+<p class="text-right d-md-flex justify-content-md-end align-items-md-end">Prototype v0.5.4</p>
 
 @switch (Message)
 {
     case 0:
-        <div class="progress" style="height: 20px;">
-            <div class="progress-bar" style="width: @(Progress+"%");">@(Progress+"%")</div>
+        <div class="d-flex justify-content-center">
+            <div class="progress" style="height: 20px; width: 50vw;">
+                <div class="progress-bar" style="width: @(Progress+"%");">@(Progress+"%")</div>
+            </div>
         </div>
         break;
     case 1:
-        <div class="progress" style="height: 20px;">
-            <div class="progress-bar" style="width: @(Progress+"%");">@(Progress+"%") (1/2)</div>
+        <div class="d-flex justify-content-center">
+            <div class="progress" style="height: 20px; width: 50vw;">
+                <div class="progress-bar" style="width: @(Progress+"%");">@(Progress+"%") (1/2)</div>
+            </div>
         </div>
         break;
     case 2:
-        <div class="progress" style="height: 20px;">
-            <div class="progress-bar" style="width: @(Progress+"%");">@(Progress+"%") (2/2)</div>
+        <div class="d-flex justify-content-center">
+            <div class="progress" style="height: 20px; width: 50vw;">
+                <div class="progress-bar" style="width: @(Progress+"%");">@(Progress+"%") (2/2)</div>
+            </div>
         </div>
         break;
     default:
