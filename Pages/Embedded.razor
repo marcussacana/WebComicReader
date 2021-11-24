@@ -39,58 +39,61 @@
 
     //Paramters:
 
-        //Input: (Required)
-        //Choose a Input File Mode
-        //Valid Values: NativeImages, NativeBook, RemoteImages, RemoteBook
+    //Input: (Required)
+    //Choose a Input File Mode
+    //Valid Values: NativeImages, NativeBook, RemoteImages, RemoteBook
 
-        //Base: (Optional, Pages Required)
-        //Set a Prefix to all Images Url/Path
+    //Base: (Optional, Pages Required)
+    //Set a Prefix to all Images Url/Path
 
-        //Pages:
-        //A List, separated by | of all page urls/paths
+    //Pages:
+    //A List, separated by | of all page urls/paths
 
-        //Archive:
-        //The Url/Path of the book to be readed
+    //Archive:
+    //The Url/Path of the book to be readed
 
-        //Mode: (Required)
-        //The Reader Mode to be used
-        //Valid Values: Comic, Manga, Other
+    //Mode: (Required)
+    //The Reader Mode to be used
+    //Valid Values: Comic, Manga, Other
 
-        //Embedded:
-        //Enable/Disable the Close/Next buttons
-        //You must create a jsobject called embedded
-        //with the functions close and next.
-        //Valid Values: true, false
+    //Embedded:
+    //Enable/Disable the Close/Next buttons
+    //You must create a jsobject called embedded
+    //with the functions close and next.
+    //Valid Values: true, false
+
+    //Width:
+    //A difference value of the reader width to fix aspect ratio, -100 for 1080p
 
     //Input Modes Usage
 
-        //NativeImages:
-        //When using a Embedded browser you can handle requests to https://res/
-        //The domain needs to work like the file:// but without security limitations
-        //Then you must send a list of all pages path to be loaded
-        //Example A: http://localhost/Embedded/#Input=NativeImages&Base=C:/SampleDir/&Pages=000.png|001.png|002.png
-        //Example B: http://localhost/Embedded/#Input=NativeImages&Base=C%3A%5CSampleDir%5C&Pages=000.png|001.png|002.png
-        //Example C: http://localhost/Embedded/#Input=NativeImages&Pages=C:\SampleDir\000.png|C:\SampleDir\001.png|C:\SampleDir\002.png
-        //Example D: http://localhost/Embedded/#Input=NativeImages&Pages=C%3A%5CSampleDir%5C000.png%7CC%3A%5CSampleDir%5C001.png%7CC%3A%5CSampleDir%5C002.png
+    //NativeImages:
+    //When using a Embedded browser you can handle requests to https://res/
+    //The domain needs to work like the file:// but without security limitations
+    //Then you must send a list of all pages path to be loaded
+    //Example A: http://localhost/Embedded/#Input=NativeImages&Base=C:/SampleDir/&Pages=000.png|001.png|002.png
+    //Example B: http://localhost/Embedded/#Input=NativeImages&Base=C%3A%5CSampleDir%5C&Pages=000.png|001.png|002.png
+    //Example C: http://localhost/Embedded/#Input=NativeImages&Pages=C:\SampleDir\000.png|C:\SampleDir\001.png|C:\SampleDir\002.png
+    //Example D: http://localhost/Embedded/#Input=NativeImages&Pages=C%3A%5CSampleDir%5C000.png%7CC%3A%5CSampleDir%5C001.png%7CC%3A%5CSampleDir%5C002.png
 
-        //NativeBook:
-        //When using a Embedded browser you can handle requests to https://res/ (Because the fetch API only allow http/https requets)
-        //The domain needs to work like the file:// but without security limitations
-        //Then you must send the book file path to be loaded
-        //Example A: http://localhost/Embedded/#Input=NativeBook&Archive=C:/SampleDir/MyComic.cbz
-        //Example B: http://localhost/Embedded/#Input=NativeBook&Archive=C%3A%5CSampleDir%5CMyComic.cbz
+    //NativeBook:
+    //When using a Embedded browser you can handle requests to https://res/ (Because the fetch API only allow http/https requets)
+    //The domain needs to work like the file:// but without security limitations
+    //Then you must send the book file path to be loaded
+    //Example A: http://localhost/Embedded/#Input=NativeBook&Archive=C:/SampleDir/MyComic.cbz
+    //Example B: http://localhost/Embedded/#Input=NativeBook&Archive=C%3A%5CSampleDir%5CMyComic.cbz
 
-        //RemoteImages:
-        //Direct Download images to be loaded
-        //Example A: http://localhost/Embedded/#Input=RemoteImages&Base=http://localhost/&Pages=000.png|001.png|002.png
-        //Example B: http://localhost/Embedded/#Input=RemoteImages&Base=http%3A%2F%2Flocalhost%2F&Pages=000.png|001.png|002.png
-        //Example C: http://localhost/Embedded/#Input=RemoteImages&Pages=http://localhost/000.png|http://localhost/001.png|http://localhost/002.png
-        //Example D: http://localhost/Embedded/#Input=RemoteImages&Pages=http%3A%2F%2Flocalhost%2F000.png%7Chttp%3A%2F%2Flocalhost%2F001.png%7Chttp%3A%2F%2Flocalhost%2F002.png
+    //RemoteImages:
+    //Direct Download images to be loaded
+    //Example A: http://localhost/Embedded/#Input=RemoteImages&Base=http://localhost/&Pages=000.png|001.png|002.png
+    //Example B: http://localhost/Embedded/#Input=RemoteImages&Base=http%3A%2F%2Flocalhost%2F&Pages=000.png|001.png|002.png
+    //Example C: http://localhost/Embedded/#Input=RemoteImages&Pages=http://localhost/000.png|http://localhost/001.png|http://localhost/002.png
+    //Example D: http://localhost/Embedded/#Input=RemoteImages&Pages=http%3A%2F%2Flocalhost%2F000.png%7Chttp%3A%2F%2Flocalhost%2F001.png%7Chttp%3A%2F%2Flocalhost%2F002.png
 
-        //RemoteBook:
-        //Direct Download a book to be loaded
-        //Example A: http://localhost/Embedded/#Input=RemoteBook&Archive=http://localhost/MyComic.cbz
-        //Example B: http://localhost/Embedded/#Input=RemoteBook&Archive=http%3A%2F%2Flocalhost%2FMyComic.cbz
+    //RemoteBook:
+    //Direct Download a book to be loaded
+    //Example A: http://localhost/Embedded/#Input=RemoteBook&Archive=http://localhost/MyComic.cbz
+    //Example B: http://localhost/Embedded/#Input=RemoteBook&Archive=http%3A%2F%2Flocalhost%2FMyComic.cbz
 
 
     protected override async Task OnInitializedAsync()
@@ -149,6 +152,11 @@
         if (Keys.Contains("embedded"))
         {
             BookLoader.EmbeddedFunctions = QueryInfo["embedded"].Trim().ToLowerInvariant() == "true";
+        }
+
+        if (Keys.Contains("width"))
+        {
+            await Runtime.InvokeVoidAsync("SetWidthDiff", int.Parse(QueryInfo["width"].Trim().ToLowerInvariant()));
         }
 
         switch (Mode.ToLowerInvariant().Trim())

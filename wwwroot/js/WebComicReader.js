@@ -1,11 +1,38 @@
-﻿async function LoadComic() {
+﻿var Width = $(window).width();
+var Height = $(window).height();
+
+function RefreshSize() {
+    Width = $(window).width();
+    Height = $(window).height();
+
+    if (typeof (localStorage['width']) !== 'undefined') {
+        Width = parseInt(localStorage['width']);
+    }
+    if (typeof (localStorage['height']) !== 'undefined') {
+        Height = parseInt(localStorage['height']);
+    }
+
+    if (typeof (localStorage['diffwidth']) !== 'undefined') {
+        Width += parseInt(localStorage['diffwidth']);
+    }
+}
+
+RefreshSize();
+
+async function SetWidthDiff(Diff) {
+    localStorage['diffwidth'] = Diff;
+}
+
+async function LoadComic() {
     await sleep(500);
+
+    RefreshSize();
 
     ResizeDoubles();
 
     $('.flipbook').turn({
-        width: $(window).width(),
-        height: $(window).height(),
+        width: Width,
+        height: Height,
         elevation: 50,
         gradients: true,
         autoCenter: true
@@ -13,17 +40,19 @@
 
     PostLoad(false);
 
-    return $(window).width() / 2;
+    return Width / 2;
 }
 
 async function LoadManga() {
     await sleep(500);
 
+    RefreshSize();
+
     ResizeDoubles(undefined, true);
 
     $('.flipbook').turn({
-        width: $(window).width(),
-        height: $(window).height(),
+        width: Width,
+        height: Height,
         elevation: 50,
         gradients: true,
         autoCenter: true
@@ -31,14 +60,14 @@ async function LoadManga() {
 
     PostLoad(true);
 
-    return $(window).width() / 2;
+    return Width / 2;
 }
 
 function ResizeDoubles(InZoom, Reverse) {
     let SecondaryClass = Reverse ? "even" : "odd";
-    let width = $(window).width();
-    let height = $(window).height();
-    let pageWidth = $(window).width() / 2;
+    let width = Width;
+    let height = Height;
+    let pageWidth = Width / 2;
     let zoomWidth = largeWidth();
     let zoomHeight = largeHeight();
     let zoomPageWidth = largeWidth() / 2;
@@ -168,8 +197,8 @@ function zoomTo(event) {
 
 function resizeViewport() {
 
-    var width = $(window).width(),
-        height = $(window).height(),
+    var width = Width,
+        height = Height,
         options = $('.flipbook').turn('options');
 
     $('.flipbook').removeClass('animated');
@@ -200,12 +229,12 @@ function resizeViewport() {
 }
 
 function largeWidth() {
-    var width = $(window).width();
+    var width = Width;
     return width + (width * 0.50);//50% of zoom
 }
 
 function largeHeight() {
-    var height = $(window).height();
+    var height = Height;
     return height + (height * 0.50);//50% of zoom
 }
 
@@ -254,4 +283,45 @@ function getBaseDirectory() {
 
 function getHash() {
     return location.hash.substr(1);
+}
+
+function AspectRatio(w, h) {
+
+    if (w == null)
+        w = $(window).width();
+    if (h == null)
+        h = $(window).height();
+
+    var aspectRatio, dividend, divisor;
+    if (h == w) {
+        aspectRatio = '1:1';
+    } else {
+        if (h > w) {
+            dividend = h;
+            divisor = w;
+        }
+
+        if (w > h) {
+            dividend = w;
+            divisor = h;
+        }
+
+        var gcd = -1;
+        while (gcd == -1) {
+            remainder = dividend % divisor;
+            if (remainder == 0) {
+                gcd = divisor;
+            } else {
+                dividend = divisor;
+                divisor = remainder;
+            }
+        }
+
+        var hr = w / gcd;
+        var vr = h / gcd;
+        aspectRatio = (hr + ':' + vr);
+
+    }
+
+    return aspectRatio;
 }
