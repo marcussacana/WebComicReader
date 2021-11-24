@@ -6,7 +6,7 @@
 @inject NavigationManager NavManager
 
 <img src="icon-512.png" style="position: relative; left: calc(50% - 256px);">
-<p class="text-right d-md-flex justify-content-md-end align-items-md-end">Prototype v0.5.3</p>
+<p class="text-right d-md-flex justify-content-md-end align-items-md-end">Prototype v0.5.4</p>
 <input type="file" id="comic" name="comic" @ref="InputFile" @onchange="Open" multiple hidden>
 
 @switch (Mode)
@@ -17,29 +17,42 @@
         </p>
         break;
     case 1:
-        <div class="progress" style="height: 20px;">
-            <div class="progress-bar" style="width: @(Progress+"%");">@(Progress+"%")</div>
-        </div>
+        <div class="d-flex justify-content-center">
+            <div class="progress" style="height: 20px; width: 50vw">
+                <div class="progress-bar" style="width: @(Progress + "%");">@(Progress + "%")</div>
+            </div>
+            </div>
         break;
     case 2:
-        <p class="text-center">
-            <select required="required" class="form-control" @onchange="OnModeChanged">
-                <option value="" selected="selected">Select a Mode</option>
-                <option value="Manga">Manga</option>
-                <option value="Comic">Comic</option>
-                <option value="Other">Other</option>
-            </select>
-            <select class="form-control" @onchange="OnWidthChanged">
-                <option value="" selected="selected">Last Width</option>
-                <option value="-50">-50</option>
-                <option value="-100">-100</option>
-                <option value="-150">-150</option>
-                <option value="-200">-200</option>
-                <option value="-250">-250</option>
-                <option value="-300">-300</option>
-            </select>
-            <button type="button" class="btn btn-primary" @onclick="Read">Read</button>
-        </p>
+        <div class="d-flex justify-content-center">
+            <p class="text-center" style="width: 50vw">
+                <select required="required" class="form-control" @onchange="OnModeChanged">
+                    <option value="" selected="selected">Select a Mode</option>
+                    <option value="Manga">Manga</option>
+                    <option value="Comic">Comic</option>
+                    <option value="Other">Other</option>
+                </select>
+                <select class="form-control" @onchange="OnWidthChanged">
+                    <option value="" selected="selected">Custom Width</option>
+                    <option value="150">300</option>
+                    <option value="150">250</option>
+                    <option value="150">200</option>
+                    <option value="150">150</option>
+                    <option value="100">100</option>
+                    <option value="50">50</option>
+                    <option value="25">25</option>
+                    <option value="0">0</option>
+                    <option value="-25">-25</option>
+                    <option value="-50">-50</option>
+                    <option value="-100">-100</option>
+                    <option value="-150">-150</option>
+                    <option value="-200">-200</option>
+                    <option value="-250">-250</option>
+                    <option value="-300">-300</option>
+                </select>
+                <button type="button" class="btn btn-primary" @onclick="Read">Read</button>
+            </p>
+        </div>
         break;
 }
 
